@@ -9,7 +9,11 @@ import com.ullink.slack.simpleslackapi.WebSocketContainerProvider;
 public class SlackSessionFactory {
     public static SlackSession createWebSocketSlackSession(String authToken)
     {
-    	return new SlackWebSocketSessionImpl(null,authToken, true, 0, null);
+    	return new SlackWebSocketSessionImpl(null,authToken, true, 0, null, null);
+    }
+
+    public static SlackSession createWebSocketSlackSession(String authToken, String slackHost) {
+        return new SlackWebSocketSessionImpl(null,authToken, true, 0, null, slackHost);
     }
 
     public static SlackSessionFactoryBuilder getSlackSessionBuilder(String authToken) {
@@ -56,7 +60,7 @@ public class SlackSessionFactory {
 
 
         public SlackSession build() {
-            return new SlackWebSocketSessionImpl(provider,authToken, proxyType, proxyAddress, proxyPort, autoreconnection,heartbeat,unit);
+            return new SlackWebSocketSessionImpl(provider,authToken, proxyType, proxyAddress, proxyPort, autoreconnection,heartbeat,unit, null);
         }
     }
 }

@@ -41,11 +41,9 @@ import java.util.concurrent.atomic.AtomicLong;
 class SlackWebSocketSessionImpl extends AbstractSlackSessionImpl implements SlackSession, MessageHandler.Whole<String> {
     private static final String SLACK_API_SCHEME = "https";
 
-    private static final String SLACK_API_HOST = "slack.com";
+    private static final String DEFAULT_SLACK_API_HOST = "slack.com";
 
     private static final String SLACK_API_PATH = "/api";
-
-    private static final String SLACK_API_HTTPS_ROOT      = SLACK_API_SCHEME + "://" + SLACK_API_HOST + SLACK_API_PATH + "/";
 
     private static final String DIRECT_MESSAGE_OPEN_CHANNEL_COMMAND = "im.open";
 
@@ -82,7 +80,7 @@ class SlackWebSocketSessionImpl extends AbstractSlackSessionImpl implements Slac
 
     private static final Logger               LOGGER                     = LoggerFactory.getLogger(SlackWebSocketSessionImpl.class);
 
-    private static final String               SLACK_HTTPS_AUTH_URL       = "https://slack.com/api/rtm.start?token=";
+    private final String slackHttpsAuthUrl;
 
     private  static final int                 DEFAULT_HEARTBEAT_IN_MILLIS = 30000;
 
@@ -93,6 +91,8 @@ class SlackWebSocketSessionImpl extends AbstractSlackSessionImpl implements Slac
     HttpHost                                  proxyHost;
     private long                              lastPingSent;
     private volatile long                     lastPingAck;
+    private final String                      slackHost;
+    private final String                      slackApiHttpsRoot;
 
     private AtomicLong                        messageId = new AtomicLong();
 
@@ -223,14 +223,17 @@ class SlackWebSocketSessionImpl extends AbstractSlackSessionImpl implements Slac
         }
     }
 
-    SlackWebSocketSessionImpl(WebSocketContainerProvider webSocketContainerProvider, String authToken, boolean reconnectOnDisconnection, long heartbeat, TimeUnit unit) {
+    SlackWebSocketSessionImpl(WebSocketContainerProvider webSocketContainerProvider, String authToken, boolean reconnectOnDisconnection, long heartbeat, TimeUnit unit, String slackHost) {
         this.authToken = authToken;
         this.reconnectOnDisconnection = reconnectOnDisconnection;
         this.heartbeat = heartbeat != 0 ? unit.toMillis(heartbeat) : 30000;
         this.webSocketContainerProvider = webSocketContainerProvider != null ? webSocketContainerProvider : new DefaultWebSocketContainerProvider(null,0);
+        this.slackHost = slackHost == null ? DEFAULT_SLACK_API_HOST : slackHost;
+        this.slackApiHttpsRoot = generateSlackApiHttpsRoot(this.slackHost);
+        this.slackHttpsAuthUrl = generateSlackHttpAuthUrl(this.slackHost);
     }
 
-    SlackWebSocketSessionImpl(WebSocketContainerProvider webSocketContainerProvider, String authToken, Proxy.Type proxyType, String proxyAddress, int proxyPort, boolean reconnectOnDisconnection, long heartbeat, TimeUnit unit) {
+    SlackWebSocketSessionImpl(WebSocketContainerProvider webSocketContainerProvider, String authToken, Proxy.Type proxyType, String proxyAddress, int proxyPort, boolean reconnectOnDisconnection, long heartbeat, TimeUnit unit, String slackHost) {
         this.authToken = authToken;
         this.proxyAddress = proxyAddress;
         this.proxyPort = proxyPort;
@@ -238,6 +241,17 @@ class SlackWebSocketSessionImpl extends AbstractSlackSessionImpl implements Slac
         this.reconnectOnDisconnection = reconnectOnDisconnection;
         this.heartbeat = heartbeat != 0 ? unit.toMillis(heartbeat) : DEFAULT_HEARTBEAT_IN_MILLIS;
         this.webSocketContainerProvider = webSocketContainerProvider != null ? webSocketContainerProvider : new DefaultWebSocketContainerProvider(proxyAddress,proxyPort);
+        this.slackHost = slackHost == null ? DEFAULT_SLACK_API_HOST : slackHost;
+        this.slackApiHttpsRoot = generateSlackApiHttpsRoot(this.slackHost);
+        this.slackHttpsAuthUrl = generateSlackHttpAuthUrl(this.slackHost);
+    }
+
+    private String generateSlackApiHttpsRoot(final String slackHost) {
+        return SLACK_API_SCHEME + "://" + slackHost + SLACK_API_PATH + "/";
+    }
+
+    private String generateSlackHttpAuthUrl(final String slackHost) {
+        return String.format("https://%s/api/rtm.start?token=", slackHost);
     }
 
     @Override
@@ -267,7 +281,7 @@ class SlackWebSocketSessionImpl extends AbstractSlackSessionImpl implements Slac
         lastPingSent = 0;
         lastPingAck = 0;
         HttpClient httpClient = getHttpClient();
-        HttpGet request = new HttpGet(SLACK_HTTPS_AUTH_URL + authToken);
+        HttpGet request = new HttpGet(slackHttpsAuthUrl + authToken);
         HttpResponse response;
         response = httpClient.execute(request);
         LOGGER.debug(response.getStatusLine().toString());
@@ -643,7 +657,7 @@ class SlackWebSocketSessionImpl extends AbstractSlackSessionImpl implements Slac
 
     private void postSlackCommand(Map<String, String> params, String command, SlackMessageHandleImpl handle) {
         HttpClient client = getHttpClient();
-        HttpPost request = new HttpPost(SLACK_API_HTTPS_ROOT + command);
+        HttpPost request = new HttpPost(slackApiHttpsRoot + command);
         List<NameValuePair> nameValuePairList = new ArrayList<>();
         for (Map.Entry<String, String> arg : params.entrySet())
         {
@@ -667,7 +681,7 @@ class SlackWebSocketSessionImpl extends AbstractSlackSessionImpl implements Slac
 
     private void postSlackCommandWithFile(Map<String, String> params, byte [] fileContent, String fileName, String command, SlackMessageHandleImpl handle) {
         URIBuilder uriBuilder = new URIBuilder();
-        uriBuilder.setScheme(SLACK_API_SCHEME).setHost(SLACK_API_HOST).setPath(SLACK_API_PATH+"/"+command);
+        uriBuilder.setScheme(SLACK_API_SCHEME).setHost(this.slackHost).setPath(SLACK_API_PATH+"/"+command);
         for (Map.Entry<String, String> arg : params.entrySet())
         {
             uriBuilder.setParameter(arg.getKey(),arg.getValue());
@@ -695,7 +709,7 @@ class SlackWebSocketSessionImpl extends AbstractSlackSessionImpl implements Slac
     @Override
     public SlackMessageHandle<GenericSlackReply> postGenericSlackCommand(Map<String, String> params, String command) {
         HttpClient client = getHttpClient();
-        HttpPost request = new HttpPost(SLACK_API_HTTPS_ROOT + command);
+        HttpPost request = new HttpPost(slackApiHttpsRoot + command);
         List<NameValuePair> nameValuePairList = new ArrayList<>();
         for (Map.Entry<String, String> arg : params.entrySet())
         {
@@ -777,7 +791,7 @@ class SlackWebSocketSessionImpl extends AbstractSlackSessionImpl implements Slac
     @Override
     public SlackPersona.SlackPresence getPresence(SlackPersona persona) {
         HttpClient client = getHttpClient();
-        HttpPost request = new HttpPost("https://slack.com/api/users.getPresence");
+        HttpPost request = new HttpPost(String.format("https://%s/api/users.getPresence", this.slackHost));
         List<NameValuePair> nameValuePairList = new ArrayList<>();
         nameValuePairList.add(new BasicNameValuePair("token", authToken));
         nameValuePairList.add(new BasicNameValuePair("user", persona.getId()));
@@ -818,7 +832,7 @@ class SlackWebSocketSessionImpl extends AbstractSlackSessionImpl implements Slac
             throw new IllegalArgumentException("Presence must be either AWAY or AUTO");
         }
         HttpClient client = getHttpClient();
-        HttpPost request = new HttpPost(SLACK_API_HTTPS_ROOT + SET_PERSONA_ACTIVE);
+        HttpPost request = new HttpPost(slackApiHttpsRoot + SET_PERSONA_ACTIVE);
         List<NameValuePair> nameValuePairList = new ArrayList<>();
         nameValuePairList.add(new BasicNameValuePair("token", authToken));
         nameValuePairList.add(new BasicNameValuePair("presence", presence.toString().toLowerCase()));
