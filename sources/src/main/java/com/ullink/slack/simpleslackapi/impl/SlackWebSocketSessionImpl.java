@@ -251,7 +251,7 @@ class SlackWebSocketSessionImpl extends AbstractSlackSessionImpl implements Slac
     }
 
     private String generateSlackHttpAuthUrl(final String slackHost) {
-        return String.format("https://%s/api/rtm.start?token=", slackHost);
+        return String.format("http://%s/api/rtm.start?token=", slackHost);
     }
 
     @Override
@@ -791,7 +791,7 @@ class SlackWebSocketSessionImpl extends AbstractSlackSessionImpl implements Slac
     @Override
     public SlackPersona.SlackPresence getPresence(SlackPersona persona) {
         HttpClient client = getHttpClient();
-        HttpPost request = new HttpPost(String.format("https://%s/api/users.getPresence", this.slackHost));
+        HttpPost request = new HttpPost(String.format("http://%s/api/users.getPresence", this.slackHost));
         List<NameValuePair> nameValuePairList = new ArrayList<>();
         nameValuePairList.add(new BasicNameValuePair("token", authToken));
         nameValuePairList.add(new BasicNameValuePair("user", persona.getId()));
