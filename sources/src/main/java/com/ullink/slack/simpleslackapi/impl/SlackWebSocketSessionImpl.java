@@ -39,7 +39,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 class SlackWebSocketSessionImpl extends AbstractSlackSessionImpl implements SlackSession, MessageHandler.Whole<String> {
-    private static final String SLACK_API_SCHEME = "https";
+    private static final String SLACK_API_SCHEME = "http";
 
     private static final String DEFAULT_SLACK_API_HOST = "slack.com";
 
