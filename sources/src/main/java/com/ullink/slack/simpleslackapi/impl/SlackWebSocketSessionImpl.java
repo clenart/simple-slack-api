@@ -504,7 +504,9 @@ class SlackWebSocketSessionImpl extends AbstractSlackSessionImpl implements Slac
         SlackMessageHandleImpl<SlackMessageReply> handle = new SlackMessageHandleImpl<>(getNextMessageId());
         Map<String, String> arguments = new HashMap<>();
         arguments.put("token", authToken);
-        arguments.put("channels", channel.getId());
+        if (channel != null) {
+            arguments.put("channels", channel.getId());
+        }
         arguments.put("filename", fileName);
         postSlackCommandWithFile(arguments, data, fileName,FILE_UPLOAD_COMMAND, handle);
         return handle;
