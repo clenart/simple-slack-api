@@ -1,5 +1,6 @@
 package com.ullink.slack.simpleslackapi.impl;
 
+import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -853,11 +854,12 @@ class SlackWebSocketSessionImpl extends AbstractSlackSessionImpl implements Slac
 
     @Override
     public void onMessage(String message) {
+        final JsonObject jsonObject = (JsonObject) (new JsonParser().parse(message));
+
         LOGGER.debug("receiving from websocket " + message);
-        if (message.contains("{\"type\":\"pong\",\"reply_to\"")) {
-            int rightBracketIdx = message.indexOf('}');
-            String toParse = message.substring(26, rightBracketIdx);
-            lastPingAck = Integer.parseInt(toParse);
+        if ("pong".equals(jsonObject.get("type").getAsString())) {
+            final int replyTo = jsonObject.get("reply_to").getAsInt();
+            lastPingAck = replyTo;
             LOGGER.debug("pong received " + lastPingAck);
         }
         else
