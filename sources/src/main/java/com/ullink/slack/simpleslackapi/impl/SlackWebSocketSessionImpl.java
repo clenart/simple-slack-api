@@ -413,12 +413,14 @@ class SlackWebSocketSessionImpl extends AbstractSlackSessionImpl implements Slac
                                     websocketSession.getBasicRemote().sendText("{\"type\":\"ping\",\"id\":" + lastPingSent + "}");
                                 }
                                 else if (reconnectOnDisconnection) {
+                                  LOGGER.debug("reconnecting because reconnectionOnDisconnection");
                                     connectImpl();
                                 }
                             }
                             catch (IllegalStateException e) {
                                 // websocketSession might be closed in this case
                                 if (reconnectOnDisconnection) {
+                                  LOGGER.debug("reconnecting because reconnectionOnDisconnection in IllegalStateException");
                                     connectImpl();
                                 }
                             }
