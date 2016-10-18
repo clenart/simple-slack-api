@@ -72,16 +72,14 @@ class SlackJSONSessionStatusParser {
             error = (String)jsonResponse.get("error").getAsString();
             return;
         }
+        JsonArray usersJson = jsonResponse.get("users").getAsJsonArray();
 
-        if (jsonResponse.get("users") != null) {
-            JsonArray usersJson = jsonResponse.get("users").getAsJsonArray();
-
-            for (JsonElement jsonObject : usersJson) {
-                JsonObject jsonUser = jsonObject.getAsJsonObject();
-                SlackUser slackUser = SlackJSONParsingUtils.buildSlackUser(jsonUser);
-                LOGGER.debug("slack user found : " + slackUser.getId());
-                users.put(slackUser.getId(), slackUser);
-            }
+        for (JsonElement jsonObject : usersJson)
+        {
+            JsonObject jsonUser = jsonObject.getAsJsonObject();
+            SlackUser slackUser = SlackJSONParsingUtils.buildSlackUser(jsonUser);
+            LOGGER.debug("slack user found : " + slackUser.getId());
+            users.put(slackUser.getId(), slackUser);
         }
 
         if (jsonResponse.get("bots") != null) {
@@ -95,15 +93,14 @@ class SlackJSONSessionStatusParser {
             }
         }
 
-        if (jsonResponse.get("channels") != null) {
-            JsonArray channelsJson = jsonResponse.get("channels").getAsJsonArray();
+        JsonArray channelsJson = jsonResponse.get("channels").getAsJsonArray();
 
-            for (JsonElement jsonObject : channelsJson) {
-                JsonObject jsonChannel = jsonObject.getAsJsonObject();
-                SlackChannelImpl channel = SlackJSONParsingUtils.buildSlackChannel(jsonChannel, users);
-                LOGGER.debug("slack public channel found : " + channel.getId());
-                channels.put(channel.getId(), channel);
-            }
+        for (JsonElement jsonObject : channelsJson)
+        {
+            JsonObject jsonChannel = jsonObject.getAsJsonObject();
+            SlackChannelImpl channel = SlackJSONParsingUtils.buildSlackChannel(jsonChannel, users);
+            LOGGER.debug("slack public channel found : " + channel.getId());
+            channels.put(channel.getId(), channel);
         }
 
         if (jsonResponse.get("groups") != null)
@@ -131,15 +128,12 @@ class SlackJSONSessionStatusParser {
             }
         }
 
-        if (jsonResponse.get("self") != null) {
-            JsonObject selfJson = jsonResponse.get("self").getAsJsonObject();
-            sessionPersona = SlackJSONParsingUtils.buildSlackUser(selfJson);
-        }
 
-        if (jsonResponse.get("team") != null) {
-            JsonObject teamJson = jsonResponse.get("team").getAsJsonObject();
-            team = SlackJSONParsingUtils.buildSlackTeam(teamJson);
-        }
+        JsonObject selfJson = jsonResponse.get("self").getAsJsonObject();
+        sessionPersona = SlackJSONParsingUtils.buildSlackUser(selfJson);
+
+        JsonObject teamJson = jsonResponse.get("team").getAsJsonObject();
+        team = SlackJSONParsingUtils.buildSlackTeam(teamJson);
 
         webSocketURL = jsonResponse.get("url").getAsString();
 
